@@ -1,0 +1,74 @@
+import kagglehub
+import pandas as pd
+import numpy as np
+
+# Kaggle 데이터 다운로드
+path = kagglehub.dataset_download("uciml/glass")  # Kaggle Dataset ID
+print("Path to dataset files:", path)
+
+# 데이터 경로 설정
+csv_file_path = f"{path}/glass.csv"  # 파일 이름과 확장자가 정확한지 확인하세요
+
+# 데이터 로드
+data = pd.read_csv(csv_file_path)
+
+# 데이터 확인
+print(data.head())
+print(data.info())
+
+# 결측치 확인
+print("결측치 확인:", data.isnull().sum().sum())
+
+# Train-Test Split
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from tensorflow.keras.utils import to_categorical
+
+# Feature와 Target 분리
+X = data.iloc[:, :-1]  # Feature
+y = data.iloc[:, -1]   # Target
+
+# Train-Test Split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# 데이터 정규화
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+# One-Hot Encoding
+y_train = to_categorical(y_train - 1, num_classes=7)  # 클래스 1~7 → 0~6
+y_test = to_categorical(y_test - 1, num_classes=7)
+
+# 신경망 모델 생성
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout
+from tensorflow.keras.optimizers import Adam
+
+model = Sequential([
+    Dense(128, input_dim=X_train.shape[1], activation='relu'),
+    Dropout(0.2),
+    Dense(64, activation='relu'),
+    Dense(7, activation='softmax')  # 7개 분류
+])
+
+# 모델 컴파일
+model.compile(optimizer=Adam(learning_rate=0.001),
+              loss='categorical_crossentropy',
+              metrics=['accuracy'])
+
+# 모델 학습
+history = model.fit(X_train, y_train,
+                    validation_split=0.2,
+                    epochs=50,
+                    batch_size=32)
+
+# 학습 결과 시각화
+import matplotlib.pyplot as plt
+plt.plot(history.history['loss'], label='Train Loss')
+plt.plot(history.history['val_loss'], label='Validation Loss')
+plt.title('Training and Validation Loss')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.legend()
+plt.show()
